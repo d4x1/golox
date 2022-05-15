@@ -324,7 +324,7 @@ func (s *scanner) number() {
 	}
 	float64Value, err := parseFloat(s.source[s.start:s.current])
 	if err != nil {
-		panic(err)
+		customPanic(err)
 	}
 	s.addToken(NUMBER, float64Value)
 }
@@ -360,4 +360,10 @@ func parseFloat(s string) (float64, error) {
 
 func isAlpha(c uint8) bool {
 	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+func customPanic(e interface{}) {
+	var a any
+	a = e
+	panic(a)
 }

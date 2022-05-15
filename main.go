@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var hasErr bool
@@ -14,9 +15,21 @@ func run(source string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(strings.ToUpper("[debug scanner]"))
 	for _, token := range tokens {
 		fmt.Println(token)
 	}
+
+	parser := newParser(tokens)
+	expression, err := parser.parse()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(strings.ToUpper("[debug parser expression]"))
+	expressionString := expression.acceptStringVisitor(&PrettyPrinter{})
+	fmt.Println(expressionString)
+
 	return nil
 }
 
@@ -45,13 +58,17 @@ func runPrompt() error {
 		if err != nil {
 			return err
 		}
-		fmt.Print(line)
-		run(line)
-		hasErr = false
+		fmt.Print("Input: ", line)
+		if err := run(line); err != nil {
+			hasErr = true
+			fmt.Printf("Error: %+v\n", err)
+		} else {
+			hasErr = false
+		}
 	}
 }
 func main() {
-	fmt.Println("welcome to go lox")
+	fmt.Println(strings.ToUpper("welcome to go lox!"))
 	args := os.Args
 	lenArgs := len(args)
 	if lenArgs > 2 {
@@ -59,7 +76,8 @@ func main() {
 	} else if lenArgs == 2 {
 		runFile(args[1])
 	} else {
-		runPrompt()
+		if err := runPrompt(); err != nil {
+			fmt.Println("Error: ", err)
+		}
 	}
-
 }
