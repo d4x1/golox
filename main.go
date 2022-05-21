@@ -30,6 +30,10 @@ func run(source string) error {
 	expressionString := expression.acceptStringVisitor(&PrettyPrinter{})
 	fmt.Println(expressionString)
 
+	fmt.Println(strings.ToUpper("[debug eval expression]"))
+	intp := interpreter{}
+	intp.interpret(expression)
+
 	return nil
 }
 
