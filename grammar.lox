@@ -1,0 +1,21 @@
+program     ->  declaration * EOF ;
+declaration -> varDeclaration | statement;
+varDeclaration -> "var" IDENTIFIER ("=" expression)? ";" ;
+statement   ->  exprStmt | printStmt | block;
+block       -> "{" declaration* "}" ;
+exprStmt    ->  expression ";" ;
+printStmt   ->  "print" expression ";" ;
+// expression  ->  literal | unary | binary | grouping ;
+expression  -> assignment ;
+assignment  -> IDENTIFIER "=" assignment | equality ;
+literal     ->  NUMBER | STRING | "true" | "false" | "nil" ;
+unary       ->  ("-" | "+") expression ;
+binary      ->  expression operator expression ;
+operator    ->  "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+primary     -> "true" | "false" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "nil";
+
+NUMBER      ->  DIGIT+ ( "." DIGIT+ )? ;
+STRING      ->  "\"" <any char except "\"">* "\"" ;
+IDENTIFIER  ->  ALPHA ( ALPHA | DIGIT )* ;
+ALPHA       ->  "a" ... "z" | "A" ... "Z" | "_" ;
+DIGIT       ->  "0" ... "9" ;

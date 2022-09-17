@@ -6,22 +6,34 @@ import (
 )
 
 type interpreter struct {
+	env *Env
 }
 
-func (i interpreter) interpret(expr Expr) {
-	value, err := i.evaluate(expr)
-	if err != nil {
-		fmt.Printf("Eval expression failed, reason: %v\n", err)
-	} else {
-		fmt.Printf("Expr value is: %v\n", value)
+func newInterpreter() *interpreter {
+	i := &interpreter{}
+	i.env = newEnv()
+	return i
+}
+
+func (i *interpreter) interpret(stmts []Stmt) {
+	for _, stmt := range stmts {
+		if err := i.execute(stmt); err != nil {
+			fmt.Printf("Execute stmt: %s failed, reason: %v\n", stmt, err)
+			return
+		}
 	}
+	fmt.Println("Execute stmts success!")
 }
 
-func (i interpreter) evaluate(expr Expr) (interface{}, error) {
+func (i *interpreter) execute(stmt Stmt) error {
+	return stmt.acceptStmtVisitor(i)
+}
+
+func (i *interpreter) evaluate(expr Expr) (interface{}, error) {
 	return expr.acceptEvalVisitor(i)
 }
 
-func (i interpreter) isTruthy(obj interface{}) bool {
+func (i *interpreter) isTruthy(obj interface{}) bool {
 	if obj == nil {
 		return false
 	}
@@ -33,7 +45,7 @@ func (i interpreter) isTruthy(obj interface{}) bool {
 	}
 }
 
-func (i interpreter) isEqual(obj1, obj2 interface{}) bool {
+func (i *interpreter) isEqual(obj1, obj2 interface{}) bool {
 	if obj1 == nil && obj2 == nil {
 		return true
 	}
@@ -43,7 +55,7 @@ func (i interpreter) isEqual(obj1, obj2 interface{}) bool {
 	return reflect.DeepEqual(obj1, obj2)
 }
 
-func (i interpreter) checkNumber(obj interface{}) (float64, error) {
+func (i *interpreter) checkNumber(obj interface{}) (float64, error) {
 	switch obj.(type) {
 	case uint:
 		return float64(obj.(uint)), nil
@@ -74,7 +86,7 @@ func (i interpreter) checkNumber(obj interface{}) (float64, error) {
 	}
 }
 
-func (i interpreter) checkNumbers(obj1, obj2 interface{}) (float64, float64, error) {
+func (i *interpreter) checkNumbers(obj1, obj2 interface{}) (float64, float64, error) {
 	obj1Num, err := i.checkNumber(obj1)
 	if err != nil {
 		return 0, 0, err
@@ -95,7 +107,7 @@ func (i interpreter) checkString(obj interface{}) (string, error) {
 	}
 }
 
-func (i interpreter) checkStrings(obj1, obj2 interface{}) (string, string, error) {
+func (i *interpreter) checkStrings(obj1, obj2 interface{}) (string, string, error) {
 	obj1Str, err := i.checkString(obj1)
 	if err != nil {
 		return "", "", err
@@ -107,7 +119,7 @@ func (i interpreter) checkStrings(obj1, obj2 interface{}) (string, string, error
 	return obj1Str, obj2Str, nil
 }
 
-func (i interpreter) visitBinaryExpr(expr BinaryExpr) (interface{}, error) {
+func (i *interpreter) visitBinaryExpr(expr BinaryExpr) (interface{}, error) {
 	left, err := i.evaluate(expr.left)
 	if err != nil {
 		return nil, err
@@ -178,7 +190,7 @@ func (i interpreter) visitBinaryExpr(expr BinaryExpr) (interface{}, error) {
 	}
 }
 
-func (i interpreter) visitUnaryExpr(expr UnaryExpr) (interface{}, error) {
+func (i *interpreter) visitUnaryExpr(expr UnaryExpr) (interface{}, error) {
 	right, err := i.evaluate(expr.right)
 	if err != nil {
 		return nil, err
@@ -196,10 +208,68 @@ func (i interpreter) visitUnaryExpr(expr UnaryExpr) (interface{}, error) {
 	return nil, fmt.Errorf("cannot eval -(%v)", right)
 }
 
-func (i interpreter) visitLiteralExpr(expr LiteralExpr) (interface{}, error) {
+func (i *interpreter) visitLiteralExpr(expr LiteralExpr) (interface{}, error) {
 	return expr.value, nil
 }
 
-func (i interpreter) visitGroupingExpr(expr GroupingExpr) (interface{}, error) {
+func (i *interpreter) visitGroupingExpr(expr GroupingExpr) (interface{}, error) {
 	return i.evaluate(expr.expression)
+}
+
+func (i *interpreter) visitVarExpr(expr VarExpr) (interface{}, error) {
+	return i.env.Get(expr.name.Lexeme)
+}
+
+func (i *interpreter) visitPrintStmt(stmt PrintStmt) error {
+	value, err := i.evaluate(stmt.expr)
+	if err != nil {
+		return err
+	}
+	fmt.Println(value)
+	return nil
+}
+
+func (i *interpreter) visitExpressionStmt(stmt ExpressionStmt) error {
+	i.evaluate(stmt.expr)
+	return nil
+}
+
+func (i *interpreter) visitVarStmt(stmt VarStmt) error {
+	var value interface{}
+	if stmt.expr != nil {
+		var err error
+		value, err = i.evaluate(stmt.expr)
+		if err != nil {
+			return err
+		}
+	}
+	i.env.Define(stmt.name.Lexeme, value)
+	return nil
+}
+
+func (i *interpreter) visitBlockStmt(stmt BlockStmt) error {
+	return i.executeBlock(stmt.stmts, newEnvWithEnclosing(i.env))
+}
+
+func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
+	preEnv := i.env
+	i.env = env
+	for _, stmt := range stmts {
+		if err := i.execute(stmt); err != nil {
+			return err
+		}
+	}
+	i.env = preEnv
+	return nil
+}
+
+func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
+	value, err := i.evaluate(expr.expr)
+	if err != nil {
+		return nil, err
+	}
+	if err := i.env.Assign(expr.name.Lexeme, value); err != nil {
+		return nil, err
+	}
+	return value, nil
 }

@@ -38,3 +38,11 @@ func (p *PrettyPrinter) visitLiteralExpr(expr LiteralExpr) string {
 func (p *PrettyPrinter) visitGroupingExpr(expr GroupingExpr) string {
 	return p.parenthesize("group", expr.expression)
 }
+
+func (p *PrettyPrinter) visitVarExpr(expr VarExpr) string {
+	return fmt.Sprintf("var %s", expr.name)
+}
+
+func (p *PrettyPrinter) visitAssignExpr(expr AssignExpr) string {
+	return fmt.Sprint("%s = %v", expr.name.Lexeme, expr.expr)
+}

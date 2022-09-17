@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+var (
+	disableDebugScanner = true
+)
+
 var hasErr bool
 
 func run(source string) error {
@@ -15,24 +19,22 @@ func run(source string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(strings.ToUpper("[debug scanner]"))
-	for _, token := range tokens {
-		fmt.Println(token)
+	if !disableDebugScanner {
+		fmt.Println(strings.ToUpper("[debug scanner]"))
+		for _, token := range tokens {
+			fmt.Println(token)
+		}
 	}
 
 	parser := newParser(tokens)
-	expression, err := parser.parse()
+	stmts, err := parser.parse()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(strings.ToUpper("[debug parser expression]"))
-	expressionString := expression.acceptStringVisitor(&PrettyPrinter{})
-	fmt.Println(expressionString)
-
-	fmt.Println(strings.ToUpper("[debug eval expression]"))
-	intp := interpreter{}
-	intp.interpret(expression)
+	fmt.Println(strings.ToUpper("[debug execute stmts]"))
+	intp := newInterpreter()
+	intp.interpret(stmts)
 
 	return nil
 }
@@ -75,6 +77,7 @@ func main() {
 	fmt.Println(strings.ToUpper("welcome to go lox!"))
 	args := os.Args
 	lenArgs := len(args)
+	fmt.Println("args:", lenArgs)
 	if lenArgs > 2 {
 		os.Exit(1)
 	} else if lenArgs == 2 {
