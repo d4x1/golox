@@ -5,6 +5,8 @@ type StmtVisitor interface {
 	visitExpressionStmt(ExpressionStmt) error
 	visitVarStmt(VarStmt) error
 	visitBlockStmt(BlockStmt) error
+	visitIFStmt(IFStmt) error
+	visitWhileStmt(WhileStmt) error
 }
 
 type Stmt interface {
@@ -65,4 +67,38 @@ func newBlockStmt(stmts []Stmt) Stmt {
 
 func (stmt BlockStmt) acceptStmtVisitor(visitor StmtVisitor) error {
 	return visitor.visitBlockStmt(stmt)
+}
+
+type IFStmt struct {
+	condition  Expr
+	thenBranch Stmt
+	elseBranch Stmt
+}
+
+func newIFStmt(condition Expr, thenBranch Stmt, elseBranch Stmt) Stmt {
+	return IFStmt{
+		condition:  condition,
+		thenBranch: thenBranch,
+		elseBranch: elseBranch,
+	}
+}
+
+func (stmt IFStmt) acceptStmtVisitor(visitor StmtVisitor) error {
+	return visitor.visitIFStmt(stmt)
+}
+
+type WhileStmt struct {
+	condition Expr
+	body      Stmt
+}
+
+func newWhileStmt(condition Expr, body Stmt) Stmt {
+	return WhileStmt{
+		condition: condition,
+		body:      body,
+	}
+}
+
+func (stmt WhileStmt) acceptStmtVisitor(visitor StmtVisitor) error {
+	return visitor.visitWhileStmt(stmt)
 }

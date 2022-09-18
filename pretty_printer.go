@@ -46,3 +46,7 @@ func (p *PrettyPrinter) visitVarExpr(expr VarExpr) string {
 func (p *PrettyPrinter) visitAssignExpr(expr AssignExpr) string {
 	return fmt.Sprint("%s = %v", expr.name.Lexeme, expr.expr)
 }
+
+func (p *PrettyPrinter) visitLogicalExpr(expr LogicalExpr) string {
+	return fmt.Sprint("%v %s %v", expr.left, expr.operator.Lexeme, expr.right)
+}

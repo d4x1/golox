@@ -32,8 +32,48 @@ func (p *parser) expression() (Expr, error) {
 	return p.assignment()
 }
 
-func (p *parser) assignment() (Expr, error) {
+func (p *parser) or() (Expr, error) {
+	expr, err := p.and()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		ok := p.match(OR)
+		if !ok {
+			break
+		}
+		operator := p.previous()
+		right, err := p.and()
+		if err != nil {
+			return nil, err
+		}
+		expr = newLogicalExpr(operator, expr, right)
+	}
+	return expr, nil
+}
+
+func (p *parser) and() (Expr, error) {
 	expr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		ok := p.match(AND)
+		if !ok {
+			break
+		}
+		operator := p.previous()
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
+		expr = newLogicalExpr(operator, expr, right)
+	}
+	return expr, nil
+}
+
+func (p *parser) assignment() (Expr, error) {
+	expr, err := p.or()
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +104,15 @@ func (p *parser) declaration() (Stmt, error) {
 func (p *parser) statement() (Stmt, error) {
 	if p.match(PRINT) {
 		return p.printStatement()
+	}
+	if p.match(IF) {
+		return p.ifStatement()
+	}
+	if p.match(WHILE) {
+		return p.whileStatement()
+	}
+	if p.match(FOR) {
+		return p.forStatement()
 	}
 	if p.match(LEFT_BRACE) {
 		stmts, err := p.block()
@@ -125,6 +174,128 @@ func (p *parser) printStatement() (Stmt, error) {
 		return nil, fmt.Errorf("expect ';' after expression")
 	}
 	return newPrintStmt(value), nil
+}
+
+func (p *parser) forStatement() (Stmt, error) {
+	token, ok := p.consume(LEFT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect '(' after expression")
+		return nil, fmt.Errorf("expect '(' after expression")
+	}
+	var initializer Stmt
+	if p.match(SEMICOLON) {
+
+	} else if p.match(VAR) {
+		var err error
+		initializer, err = p.varDeclaration()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		initializer, err = p.expressionStatement()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var condition Expr
+	if p.check(SEMICOLON) {
+		// condition 不存在
+	} else {
+		var err error
+		condition, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	token, ok = p.consume(SEMICOLON)
+	if !ok {
+		p.parseErr(token, "expect ';' after expression")
+		return nil, fmt.Errorf("expect ';' after expression")
+	}
+
+	var increment Expr
+	if p.check(RIGHT_PAREN) {
+		// increment 不存在
+	} else {
+		var err error
+		increment, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	token, ok = p.consume(RIGHT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect ')' after expression")
+		return nil, fmt.Errorf("expect ')' after expression")
+	}
+	body, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+	if increment != nil {
+		body = newBlockStmt([]Stmt{body, newExpressionStmt(increment)})
+	}
+	if condition == nil {
+		condition = newLiteralExpr(true)
+	}
+	body = newWhileStmt(condition, body)
+	if initializer != nil {
+		body = newBlockStmt([]Stmt{initializer, body})
+	}
+	return body, nil
+}
+
+func (p *parser) whileStatement() (Stmt, error) {
+	token, ok := p.consume(LEFT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect '(' after expression")
+		return nil, fmt.Errorf("expect '(' after expression")
+	}
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	token, ok = p.consume(RIGHT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect ')' after expression")
+		return nil, fmt.Errorf("expect ')' after expression")
+	}
+	body, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+	return newWhileStmt(condition, body), nil
+}
+
+func (p *parser) ifStatement() (Stmt, error) {
+	token, ok := p.consume(LEFT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect '(' after expression")
+		return nil, fmt.Errorf("expect '(' after expression")
+	}
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	token, ok = p.consume(RIGHT_PAREN)
+	if !ok {
+		p.parseErr(token, "expect ')' after expression")
+		return nil, fmt.Errorf("expect ')' after expression")
+	}
+	thenBranch, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+	var elseBranch Stmt
+	if p.match(ELSE) {
+		var err error
+		elseBranch, err = p.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return newIFStmt(condition, thenBranch, elseBranch), nil
 }
 
 func (p *parser) expressionStatement() (Stmt, error) {

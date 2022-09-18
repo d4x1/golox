@@ -263,6 +263,40 @@ func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 	return nil
 }
 
+func (i *interpreter) visitWhileStmt(stmt WhileStmt) error {
+	for {
+		condition, err := i.evaluate(stmt.condition)
+		if err != nil {
+			return err
+		}
+		if i.isTruthy(condition) {
+			if err := i.execute(stmt.body); err != nil {
+				return err
+			}
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
+func (i *interpreter) visitIFStmt(stmt IFStmt) error {
+	condition, err := i.evaluate(stmt.condition)
+	if err != nil {
+		return err
+	}
+	if i.isTruthy(condition) {
+		if i.execute(stmt.thenBranch); err != nil {
+			return err
+		}
+	} else if stmt.elseBranch != nil {
+		if i.execute(stmt.elseBranch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
 	value, err := i.evaluate(expr.expr)
 	if err != nil {
@@ -272,4 +306,25 @@ func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
 		return nil, err
 	}
 	return value, nil
+}
+
+func (i *interpreter) visitLogicalExpr(expr LogicalExpr) (interface{}, error) {
+	left, err := i.evaluate(expr.left)
+	if err != nil {
+		return nil, err
+	}
+	if expr.operator.Type == OR {
+		if i.isTruthy(left) {
+			return left, nil
+		}
+	} else {
+		if !i.isTruthy(left) {
+			return left, nil
+		}
+	}
+	right, err := i.evaluate(expr.right)
+	if err != nil {
+		return nil, err
+	}
+	return right, nil
 }
