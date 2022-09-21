@@ -1,0 +1,8 @@
+fun fib(abc) {
+  if (abc <= 1) return abc;
+  return fib(abc - 2) + fib(abc - 1);
+}
+
+
+print "----------";
+print fib(2);

@@ -50,3 +50,7 @@ func (p *PrettyPrinter) visitAssignExpr(expr AssignExpr) string {
 func (p *PrettyPrinter) visitLogicalExpr(expr LogicalExpr) string {
 	return fmt.Sprint("%v %s %v", expr.left, expr.operator.Lexeme, expr.right)
 }
+
+func (p *PrettyPrinter) visitCallExpr(expr CallExpr) string {
+	return fmt.Sprint("%v %v %v", expr.callee, expr.paren, expr.args)
+}

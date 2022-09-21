@@ -8,6 +8,7 @@ type Visitor interface {
 	visitVarExpr(expr VarExpr) string
 	visitAssignExpr(expr AssignExpr) string
 	visitLogicalExpr(expr LogicalExpr) string
+	visitCallExpr(expr CallExpr) string
 }
 
 type EvalVisitor interface {
@@ -18,6 +19,7 @@ type EvalVisitor interface {
 	visitVarExpr(expr VarExpr) (interface{}, error)
 	visitAssignExpr(expr AssignExpr) (interface{}, error)
 	visitLogicalExpr(expr LogicalExpr) (interface{}, error)
+	visitCallExpr(expr CallExpr) (interface{}, error)
 }
 
 type Expr interface {
@@ -159,4 +161,26 @@ func (expr *LogicalExpr) acceptStringVisitor(visitor Visitor) string {
 
 func (expr *LogicalExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
 	return visitor.visitLogicalExpr(*expr)
+}
+
+type CallExpr struct {
+	callee Expr
+	paren  token
+	args   []Expr
+}
+
+func newCallExpr(callee Expr, paren token, args []Expr) *CallExpr {
+	return &CallExpr{
+		callee: callee,
+		paren:  paren,
+		args:   args,
+	}
+}
+
+func (expr *CallExpr) acceptStringVisitor(visitor Visitor) string {
+	return visitor.visitCallExpr(*expr)
+}
+
+func (expr *CallExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
+	return visitor.visitCallExpr(*expr)
 }

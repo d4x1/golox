@@ -1,20 +1,27 @@
+// 这个是编写interpreter 的大纲，expression 和 statement 的区别，在这个处理过程中有明显的区别。
+// 至于 | 的先后顺序，或者一个特性被定性为什么类型的，主要是有设计上的考量，出发点是处理方便。
 program     ->  declaration * EOF ;
-declaration -> varDeclaration | statement;
+declaration -> varDeclaration | statement | funcDeclaration;
+funcDeclaration -> "fun" function ;
+function    ->  IDENTIFIER "(" parameters? ")" block ;
+parameters  -> IDENTIFIER ("," IDENTIFIER )* ;
 varDeclaration -> "var" IDENTIFIER ("=" expression)? ";" ;
-statement   ->  exprStmt | forStmt | ifStmt| printStmt | whiteStemt |block ;
+statement   ->  exprStmt | forStmt | ifStmt| printStmt | returnStmt | whiteStemt | block ;
+returnStmt  -> "return" expression? ";" ;
 forStmt     -> "for" "(" (varDeclaration | exprStmt | ";") expression? ";"expression? ")" statement;
 whiteStemt  -> "while" "(" expression")" statement ;
 ifStmt      -> "if" "(" expression ")" statement ("else" statement)? ;
 block       -> "{" declaration* "}" ;
 exprStmt    ->  expression ";" ;
 printStmt   ->  "print" expression ";" ;
-// expression  ->  literal | unary | binary | grouping ;
 expression  -> assignment ;
 assignment  -> IDENTIFIER "=" assignment | logic_or ;
 logic_or    -> logic_and ("or" logic_and)* ;
 logic_and   -> equality ("and" equality)* ;
 literal     ->  NUMBER | STRING | "true" | "false" | "nil" ;
-unary       ->  ("-" | "+") expression ;
+unary       ->  ("-" | "+") unary | call ;
+call        -> primary ( "(" arguments? ")" )* ;
+arguments   -> expression ( "," expression )* ;
 binary      ->  expression operator expression ;
 operator    ->  "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | ">" | ">=" ;
 primary     -> "true" | "false" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "nil";

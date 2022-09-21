@@ -6,13 +6,21 @@ import (
 )
 
 type interpreter struct {
-	env *Env
+	globals *Env
+	env     *Env
 }
 
 func newInterpreter() *interpreter {
 	i := &interpreter{}
-	i.env = newEnv()
+	i.globals = newEnv()
+	i.env = i.globals
+	// init native functions
+	i.globals.Define("clock", newNativeFunctionClock())
 	return i
+}
+
+func (i *interpreter) GetGlobalEnv() *Env {
+	return i.globals
 }
 
 func (i *interpreter) interpret(stmts []Stmt) {
@@ -26,7 +34,9 @@ func (i *interpreter) interpret(stmts []Stmt) {
 }
 
 func (i *interpreter) execute(stmt Stmt) error {
-	return stmt.acceptStmtVisitor(i)
+	err := stmt.acceptStmtVisitor(i)
+	fmt.Printf("===> execute stmt: %+v, err== nil? %v, err: %+v\n", stmt, err == nil, err)
+	return err
 }
 
 func (i *interpreter) evaluate(expr Expr) (interface{}, error) {
@@ -251,13 +261,21 @@ func (i *interpreter) visitBlockStmt(stmt BlockStmt) error {
 	return i.executeBlock(stmt.stmts, newEnvWithEnclosing(i.env))
 }
 
+func (i *interpreter) ExecuteBlock(stmts []Stmt, env *Env) error {
+	return i.executeBlock(stmts, env)
+}
+
+// 这里牵扯到 nesting 和 shadowing 的问题。不同的 block 中使用的 env 是不一样的。
 func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 	preEnv := i.env
 	i.env = env
 	for _, stmt := range stmts {
-		if err := i.execute(stmt); err != nil {
+		// fmt.Printf("run stmt, idx: %d,  %+v\n", idx, stmt)
+		err := i.execute(stmt)
+		if err != nil {
 			return err
 		}
+
 	}
 	i.env = preEnv
 	return nil
@@ -280,23 +298,29 @@ func (i *interpreter) visitWhileStmt(stmt WhileStmt) error {
 	return nil
 }
 
+// if 语句存在一个问题： 如果两个 if 之后，出现了一个 else ，那么 else 属于哪个 if ？
+// 这里实际上是认为 else 跟最近的 if 搭配。
+// 不同的编程语言解决这个问题都不一样，实际操作很复杂。
 func (i *interpreter) visitIFStmt(stmt IFStmt) error {
 	condition, err := i.evaluate(stmt.condition)
 	if err != nil {
 		return err
 	}
 	if i.isTruthy(condition) {
-		if i.execute(stmt.thenBranch); err != nil {
+		if err := i.execute(stmt.thenBranch); err != nil {
 			return err
 		}
 	} else if stmt.elseBranch != nil {
-		if i.execute(stmt.elseBranch); err != nil {
+		if err := i.execute(stmt.elseBranch); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// assgin expr 返回了 value，这个行为值得商榷。
+// 会产生很多副作用：比如执行 `a=b;` 的时候，会把赋值之后的值也打印出来。
+// 但是移出这个副作用，也比较复杂。这个在当初设计的时候就需要考虑到。
 func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
 	value, err := i.evaluate(expr.expr)
 	if err != nil {
@@ -327,4 +351,46 @@ func (i *interpreter) visitLogicalExpr(expr LogicalExpr) (interface{}, error) {
 		return nil, err
 	}
 	return right, nil
+}
+
+func (i *interpreter) visitCallExpr(expr CallExpr) (interface{}, error) {
+	callee, err := i.evaluate(expr.callee)
+	if err != nil {
+		return nil, err
+	}
+	var argsList []interface{}
+	for _, args := range expr.args {
+		arg, err := i.evaluate(args)
+		if err != nil {
+			return nil, err
+		}
+		argsList = append(argsList, arg)
+	}
+	if v, ok := callee.(Callable); ok {
+		if len(argsList) != v.Arity() {
+			return nil, fmt.Errorf("callable: %s, Expected: %d arguments but got: %d", v, v.Arity(), len(argsList))
+		}
+		return v.Call(i, argsList)
+	}
+	return nil, fmt.Errorf("%v is not callable", callee)
+}
+
+func (i *interpreter) visitFunctionStmt(stmt FunctionStmt) error {
+	function := newLoxFunction(stmt)
+	i.env.Define(stmt.name.Lexeme, function)
+	return nil
+}
+
+func (i *interpreter) visitReturnStmt(stmt ReturnStmt) error {
+	var value interface{}
+	if stmt.value != nil {
+		var err error
+		value, err = i.evaluate(stmt.value)
+		if err != nil {
+			return err
+		}
+	}
+	// 这里使用错误来传递值到适当的调用方
+	fmt.Printf("---> prepare return value: %v, stmt: %+v, stmt.value: %+v, env: %+v, global: %+v\n", value, stmt, stmt.value, i.env, i.globals)
+	return NewReturn(value)
 }

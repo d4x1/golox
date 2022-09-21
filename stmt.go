@@ -7,6 +7,8 @@ type StmtVisitor interface {
 	visitBlockStmt(BlockStmt) error
 	visitIFStmt(IFStmt) error
 	visitWhileStmt(WhileStmt) error
+	visitFunctionStmt(FunctionStmt) error
+	visitReturnStmt(ReturnStmt) error
 }
 
 type Stmt interface {
@@ -101,4 +103,38 @@ func newWhileStmt(condition Expr, body Stmt) Stmt {
 
 func (stmt WhileStmt) acceptStmtVisitor(visitor StmtVisitor) error {
 	return visitor.visitWhileStmt(stmt)
+}
+
+type FunctionStmt struct {
+	name   token
+	params []token
+	stmts  []Stmt
+}
+
+func newFunctionStmt(name token, params []token, stmts []Stmt) Stmt {
+	return FunctionStmt{
+		name:   name,
+		params: params,
+		stmts:  stmts,
+	}
+}
+
+func (stmt FunctionStmt) acceptStmtVisitor(visitor StmtVisitor) error {
+	return visitor.visitFunctionStmt(stmt)
+}
+
+type ReturnStmt struct {
+	keyword token
+	value   Expr
+}
+
+func newReturnStmt(keyword token, value Expr) Stmt {
+	return ReturnStmt{
+		keyword: keyword,
+		value:   value,
+	}
+}
+
+func (stmt ReturnStmt) acceptStmtVisitor(visitor StmtVisitor) error {
+	return visitor.visitReturnStmt(stmt)
 }
