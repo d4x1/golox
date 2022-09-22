@@ -34,9 +34,7 @@ func (i *interpreter) interpret(stmts []Stmt) {
 }
 
 func (i *interpreter) execute(stmt Stmt) error {
-	err := stmt.acceptStmtVisitor(i)
-	fmt.Printf("===> execute stmt: %+v, err== nil? %v, err: %+v\n", stmt, err == nil, err)
-	return err
+	return stmt.acceptStmtVisitor(i)
 }
 
 func (i *interpreter) evaluate(expr Expr) (interface{}, error) {
@@ -269,15 +267,17 @@ func (i *interpreter) ExecuteBlock(stmts []Stmt, env *Env) error {
 func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 	preEnv := i.env
 	i.env = env
+	defer func() {
+		i.env = preEnv
+	}()
 	for _, stmt := range stmts {
-		// fmt.Printf("run stmt, idx: %d,  %+v\n", idx, stmt)
 		err := i.execute(stmt)
 		if err != nil {
+
 			return err
 		}
 
 	}
-	i.env = preEnv
 	return nil
 }
 
@@ -376,7 +376,7 @@ func (i *interpreter) visitCallExpr(expr CallExpr) (interface{}, error) {
 }
 
 func (i *interpreter) visitFunctionStmt(stmt FunctionStmt) error {
-	function := newLoxFunction(stmt)
+	function := newLoxFunction(stmt, i.env)
 	i.env.Define(stmt.name.Lexeme, function)
 	return nil
 }
@@ -391,6 +391,5 @@ func (i *interpreter) visitReturnStmt(stmt ReturnStmt) error {
 		}
 	}
 	// 这里使用错误来传递值到适当的调用方
-	fmt.Printf("---> prepare return value: %v, stmt: %+v, stmt.value: %+v, env: %+v, global: %+v\n", value, stmt, stmt.value, i.env, i.globals)
 	return NewReturn(value)
 }

@@ -2,18 +2,19 @@ package main
 
 import (
 	"errors"
-	"fmt"
 )
 
 type LoxFunction struct {
 	name        string
 	declaration FunctionStmt
+	closure     *Env
 }
 
-func newLoxFunction(stmt FunctionStmt) *LoxFunction {
+func newLoxFunction(stmt FunctionStmt, env *Env) *LoxFunction {
 	return &LoxFunction{
 		declaration: stmt,
 		name:        stmt.name.Lexeme,
+		closure:     env,
 	}
 }
 
@@ -26,11 +27,10 @@ func (f *LoxFunction) Arity() int {
 }
 
 func (f *LoxFunction) Call(intp Interpreter, args []interface{}) (interface{}, error) {
-	env := newEnvWithEnclosing(intp.GetGlobalEnv())
+	env := newEnvWithEnclosing(f.closure)
 	for i, v := range f.declaration.params {
 		env.Define(v.Lexeme, args[i])
 	}
-	fmt.Printf("call %+v\n", env)
 	if err := intp.ExecuteBlock(f.declaration.stmts, env); err != nil {
 		var returnValue Return
 		if errors.As(err, &returnValue) {
