@@ -233,7 +233,9 @@ func (i *interpreter) visitPrintStmt(stmt PrintStmt) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(value)
+	if value != nil {
+		fmt.Println(value)
+	}
 	return nil
 }
 
@@ -329,7 +331,7 @@ func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
 	if err := i.env.Assign(expr.name.Lexeme, value); err != nil {
 		return nil, err
 	}
-	return value, nil
+	return nil, nil
 }
 
 func (i *interpreter) visitLogicalExpr(expr LogicalExpr) (interface{}, error) {
