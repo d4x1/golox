@@ -1,7 +1,8 @@
 // 这个是编写interpreter 的大纲，expression 和 statement 的区别，在这个处理过程中有明显的区别。
 // 至于 | 的先后顺序，或者一个特性被定性为什么类型的，主要是有设计上的考量，出发点是处理方便。
 program     ->  declaration * EOF ;
-declaration -> varDeclaration | statement | funcDeclaration;
+declaration -> classDeclaration | varDeclaration | statement | funcDeclaration;
+classDeclaration    -> "class" IDENTIFIER "{" function* "}" ;
 funcDeclaration -> "fun" function ;
 function    ->  IDENTIFIER "(" parameters? ")" block ;
 parameters  -> IDENTIFIER ("," IDENTIFIER )* ;

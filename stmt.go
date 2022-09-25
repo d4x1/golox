@@ -11,6 +11,7 @@ type StmtVisitor interface {
 	visitWhileStmt(WhileStmt) error
 	visitFunctionStmt(FunctionStmt) error
 	visitReturnStmt(ReturnStmt) error
+	visitClassStmt(ClassStmt) error
 }
 
 type Stmt interface {
@@ -173,5 +174,25 @@ func (stmt ReturnStmt) acceptStmtVisitor(visitor StmtVisitor) error {
 }
 
 func (stmt ReturnStmt) String() string {
-	return fmt.Sprintf("return stmt, name: %s, value: %s", stmt.value)
+	return fmt.Sprintf("return stmt, value: %s", stmt.value)
+}
+
+type ClassStmt struct {
+	name      token
+	functions []FunctionStmt
+}
+
+func newClassStmt(name token, functions []FunctionStmt) Stmt {
+	return ClassStmt{
+		name:      name,
+		functions: functions,
+	}
+}
+
+func (stmt ClassStmt) acceptStmtVisitor(visitor StmtVisitor) error {
+	return visitor.visitClassStmt(stmt)
+}
+
+func (stmt ClassStmt) String() string {
+	return fmt.Sprintf("class stmt, name: %s, functions: %s", stmt.name, stmt.functions)
 }

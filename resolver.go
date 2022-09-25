@@ -230,6 +230,16 @@ func (r *resolver) visitWhileStmt(stmt WhileStmt) error {
 	return nil
 }
 
+func (r *resolver) visitClassStmt(stmt ClassStmt) error {
+	if err := r.declare(stmt.name); err != nil {
+		return err
+	}
+	if err := r.define(stmt.name); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *resolver) visitFunctionStmt(stmt FunctionStmt) error {
 	if err := r.declare(stmt.name); err != nil {
 		return err

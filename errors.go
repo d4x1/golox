@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	errCastToMapString2Bool = errors.New("is not a map[string]bool")
+	errCastToMapString2Bool  = errors.New("interface{} is not a map[string]bool")
+	errCastStmt2FunctionStmt = errors.New("stmt is not a function stmt")
 )
 
 type Return struct {

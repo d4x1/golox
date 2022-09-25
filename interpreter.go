@@ -69,6 +69,7 @@ func (i *interpreter) Resolve(expr Expr, distance int) error {
 }
 
 func (i *interpreter) resolve(expr Expr, distance int) error {
+	// fmt.Printf("put %s to locals, distane: %d\n", expr, distance)
 	i.locals[expr] = distance
 	return nil
 }
@@ -319,6 +320,13 @@ func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 		}
 	}
 	return nil
+}
+
+// 先 Define 后 Assign 的好处是：可以在当前 class 中使用自身。
+func (i *interpreter) visitClassStmt(stmt ClassStmt) error {
+	i.env.Define(stmt.name.Lexeme, nil)
+	loxClass := newLoxClass(stmt.name.Lexeme)
+	return i.env.Assign(stmt.name, loxClass)
 }
 
 func (i *interpreter) visitWhileStmt(stmt WhileStmt) error {

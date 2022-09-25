@@ -8,6 +8,7 @@ const (
 	maxArgsCount = 128
 
 	typeFunction = "function"
+	typeMethod   = "method"
 )
 
 // syntactic analysis
@@ -102,6 +103,9 @@ func (p *parser) assignment() (Expr, error) {
 
 func (p *parser) declaration() (Stmt, error) {
 	// 这里可以单独处理下错误，如果当前语句解析出错，还可以继续解析。
+	if p.match(CLASS) {
+		return p.classDeclaration()
+	}
 	if p.match(FUN) {
 		return p.function(typeFunction)
 	}
@@ -109,6 +113,38 @@ func (p *parser) declaration() (Stmt, error) {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+func (p *parser) classDeclaration() (Stmt, error) {
+	name, ok := p.consume(IDENTIFIER)
+	if !ok {
+		p.parseErr(name, fmt.Sprintf("expect class name"))
+		return nil, fmt.Errorf("expect class name")
+	}
+	token, ok := p.consume(LEFT_BRACE)
+	if !ok {
+		p.parseErr(token, fmt.Sprintf("expect '{' before class body"))
+		return nil, fmt.Errorf("expect '{' before class body")
+	}
+	var methods []FunctionStmt
+	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+		methodStmt, err := p.function(typeMethod)
+		if err != nil {
+			return nil, err
+		}
+		method, ok := methodStmt.(FunctionStmt)
+		if !ok {
+			return nil, errCastStmt2FunctionStmt
+		}
+		methods = append(methods, method)
+	}
+	token, ok = p.consume(RIGHT_BRACE)
+	if !ok {
+		p.parseErr(token, fmt.Sprintf("expect '}' after class body"))
+		return nil, fmt.Errorf("expect '}' after class body")
+	}
+
+	return newClassStmt(name, methods), nil
 }
 
 func (p *parser) function(kind string) (Stmt, error) {

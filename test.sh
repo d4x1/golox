@@ -1,12 +1,10 @@
-
-sh build.sh && echo "${GREEN}BUILD SUCCESS!${NOCOLOR}"
-
-
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NOCOLOR='\033[0m'
-SUCCESS_INFO="EXECUTE STMTS SUCCESS!"
 
+sh build.sh && echo "${GREEN}BUILD SUCCESS!${NOCOLOR}"
+
+SUCCESS_INFO="EXECUTE STMTS SUCCESS!"
 for i in ${PWD}/lox_demo/*; do
     name=`echo "$i"|rev|cut -d "/" -f1|rev`
     # echo $name
