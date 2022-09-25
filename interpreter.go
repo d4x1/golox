@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type interpreter struct {
 	globals *Env
 	env     *Env
+	locals  map[Expr]int // 即使是同一个 name 的 var，实际上也是不同的 Expr 对象。如果 Expr 实现的 receiver 不是 pointer 的话，就不满足这个约束了。
 }
 
 func newInterpreter() *interpreter {
@@ -16,11 +18,32 @@ func newInterpreter() *interpreter {
 	i.env = i.globals
 	// init native functions
 	i.globals.Define("clock", newNativeFunctionClock())
+	// record variables' distance to current env
+	i.locals = make(map[Expr]int)
 	return i
 }
 
 func (i *interpreter) GetGlobalEnv() *Env {
 	return i.globals
+}
+
+func (i *interpreter) debugEnv() {
+	if i == nil {
+		return
+	}
+	if i.env == nil {
+		return
+	}
+	var idx int
+	env := i.env
+	for {
+		fmt.Printf("[DEBUG ENV]idx: %d, env: %+v\n", idx, env)
+		idx++
+		if env.enclosing == nil {
+			break
+		}
+		env = env.enclosing
+	}
 }
 
 func (i *interpreter) interpret(stmts []Stmt) {
@@ -30,7 +53,7 @@ func (i *interpreter) interpret(stmts []Stmt) {
 			return
 		}
 	}
-	fmt.Println("Execute stmts success!")
+	fmt.Println(strings.ToUpper("Execute stmts success!"))
 }
 
 func (i *interpreter) execute(stmt Stmt) error {
@@ -39,6 +62,15 @@ func (i *interpreter) execute(stmt Stmt) error {
 
 func (i *interpreter) evaluate(expr Expr) (interface{}, error) {
 	return expr.acceptEvalVisitor(i)
+}
+
+func (i *interpreter) Resolve(expr Expr, distance int) error {
+	return i.resolve(expr, distance)
+}
+
+func (i *interpreter) resolve(expr Expr, distance int) error {
+	i.locals[expr] = distance
+	return nil
 }
 
 func (i *interpreter) isTruthy(obj interface{}) bool {
@@ -127,7 +159,7 @@ func (i *interpreter) checkStrings(obj1, obj2 interface{}) (string, string, erro
 	return obj1Str, obj2Str, nil
 }
 
-func (i *interpreter) visitBinaryExpr(expr BinaryExpr) (interface{}, error) {
+func (i *interpreter) visitBinaryExpr(expr *BinaryExpr) (interface{}, error) {
 	left, err := i.evaluate(expr.left)
 	if err != nil {
 		return nil, err
@@ -198,7 +230,7 @@ func (i *interpreter) visitBinaryExpr(expr BinaryExpr) (interface{}, error) {
 	}
 }
 
-func (i *interpreter) visitUnaryExpr(expr UnaryExpr) (interface{}, error) {
+func (i *interpreter) visitUnaryExpr(expr *UnaryExpr) (interface{}, error) {
 	right, err := i.evaluate(expr.right)
 	if err != nil {
 		return nil, err
@@ -216,16 +248,24 @@ func (i *interpreter) visitUnaryExpr(expr UnaryExpr) (interface{}, error) {
 	return nil, fmt.Errorf("cannot eval -(%v)", right)
 }
 
-func (i *interpreter) visitLiteralExpr(expr LiteralExpr) (interface{}, error) {
+func (i *interpreter) visitLiteralExpr(expr *LiteralExpr) (interface{}, error) {
 	return expr.value, nil
 }
 
-func (i *interpreter) visitGroupingExpr(expr GroupingExpr) (interface{}, error) {
+func (i *interpreter) visitGroupingExpr(expr *GroupingExpr) (interface{}, error) {
 	return i.evaluate(expr.expression)
 }
 
-func (i *interpreter) visitVarExpr(expr VarExpr) (interface{}, error) {
-	return i.env.Get(expr.name.Lexeme)
+func (i *interpreter) visitVarExpr(expr *VarExpr) (interface{}, error) {
+	return i.lookupVariable(expr.name, expr)
+}
+
+func (i *interpreter) lookupVariable(exprName token, expr Expr) (interface{}, error) {
+	distance, ok := i.locals[expr]
+	if ok {
+		return i.env.GetAtByVarName(distance, exprName.Lexeme)
+	}
+	return i.globals.Get(exprName)
 }
 
 func (i *interpreter) visitPrintStmt(stmt PrintStmt) error {
@@ -275,10 +315,8 @@ func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 	for _, stmt := range stmts {
 		err := i.execute(stmt)
 		if err != nil {
-
 			return err
 		}
-
 	}
 	return nil
 }
@@ -323,18 +361,25 @@ func (i *interpreter) visitIFStmt(stmt IFStmt) error {
 // assgin expr 返回了 value，这个行为值得商榷。
 // 会产生很多副作用：比如执行 `a=b;` 的时候，会把赋值之后的值也打印出来。
 // 但是移出这个副作用，也比较复杂。这个在当初设计的时候就需要考虑到。
-func (i *interpreter) visitAssignExpr(expr AssignExpr) (interface{}, error) {
+func (i *interpreter) visitAssignExpr(expr *AssignExpr) (interface{}, error) {
 	value, err := i.evaluate(expr.expr)
 	if err != nil {
 		return nil, err
 	}
-	if err := i.env.Assign(expr.name.Lexeme, value); err != nil {
-		return nil, err
+	distance, ok := i.locals[expr]
+	if ok {
+		if err := i.env.AssignAt(distance, expr.name, value); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.globals.Assign(expr.name, value); err != nil {
+			return nil, err
+		}
 	}
 	return nil, nil
 }
 
-func (i *interpreter) visitLogicalExpr(expr LogicalExpr) (interface{}, error) {
+func (i *interpreter) visitLogicalExpr(expr *LogicalExpr) (interface{}, error) {
 	left, err := i.evaluate(expr.left)
 	if err != nil {
 		return nil, err
@@ -355,7 +400,7 @@ func (i *interpreter) visitLogicalExpr(expr LogicalExpr) (interface{}, error) {
 	return right, nil
 }
 
-func (i *interpreter) visitCallExpr(expr CallExpr) (interface{}, error) {
+func (i *interpreter) visitCallExpr(expr *CallExpr) (interface{}, error) {
 	callee, err := i.evaluate(expr.callee)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,12 @@
+fun add(a, b, c) {
+  print a + b + c;
+}
+
+add(1, 2, 3);
+
+print "----------";
+fun add(a, b) {
+  print a + b;
+}
+
+print add;

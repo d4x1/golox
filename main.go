@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	disableDebugScanner = true
+	disableDebugScanner       = true
+	disableDebugResolveLocals = true
 )
 
 var hasErr bool
@@ -34,6 +35,13 @@ func run(source string) error {
 
 	fmt.Println(strings.ToUpper("[debug execute stmts]"))
 	intp := newInterpreter()
+	resolver := newResolver(intp)
+	if err := resolver.resolveStmts(stmts); err != nil {
+		return err
+	}
+	if !disableDebugResolveLocals {
+		fmt.Printf("interpreter locals: %+v\n", intp.locals)
+	}
 	intp.interpret(stmts)
 
 	return nil
@@ -49,7 +57,9 @@ func runFile(fileName string) error {
 	if err != nil {
 		return err
 	}
-	run(string(bytes))
+	if err := run(string(bytes)); err != nil {
+		return err
+	}
 	if hasErr {
 		os.Exit(1)
 	}
@@ -77,11 +87,13 @@ func main() {
 	fmt.Println(strings.ToUpper("welcome to go lox!"))
 	args := os.Args
 	lenArgs := len(args)
-	fmt.Println("args:", lenArgs)
+	// fmt.Println("args:", lenArgs)
 	if lenArgs > 2 {
 		os.Exit(1)
 	} else if lenArgs == 2 {
-		runFile(args[1])
+		if err := runFile(args[1]); err != nil {
+			fmt.Println("Run File Error: ", err)
+		}
 	} else {
 		if err := runPrompt(); err != nil {
 			fmt.Println("Error: ", err)

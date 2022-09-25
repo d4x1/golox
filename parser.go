@@ -10,6 +10,7 @@ const (
 	typeFunction = "function"
 )
 
+// syntactic analysis
 type parser struct {
 	tokens  []token
 	current int

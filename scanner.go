@@ -128,6 +128,10 @@ type token struct {
 }
 
 func (token token) String() string {
+	return fmt.Sprintf(token.Lexeme)
+}
+
+func (token token) Detail() string {
 	return fmt.Sprintf("No.: %d, type: %v, lexeme: %v, literal: %v", token.Type, typeToString(token.Type), token.Lexeme, token.literal)
 }
 

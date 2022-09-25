@@ -1,6 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	errCastToMapString2Bool = errors.New("is not a map[string]bool")
+)
 
 type Return struct {
 	Value interface{}

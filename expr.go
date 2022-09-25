@@ -1,25 +1,27 @@
 package main
 
+import "fmt"
+
 type Visitor interface {
-	visitBinaryExpr(expr BinaryExpr) string
-	visitUnaryExpr(expr UnaryExpr) string
-	visitLiteralExpr(expr LiteralExpr) string
-	visitGroupingExpr(expr GroupingExpr) string
-	visitVarExpr(expr VarExpr) string
-	visitAssignExpr(expr AssignExpr) string
-	visitLogicalExpr(expr LogicalExpr) string
-	visitCallExpr(expr CallExpr) string
+	visitBinaryExpr(expr *BinaryExpr) string
+	visitUnaryExpr(expr *UnaryExpr) string
+	visitLiteralExpr(expr *LiteralExpr) string
+	visitGroupingExpr(expr *GroupingExpr) string
+	visitVarExpr(expr *VarExpr) string
+	visitAssignExpr(expr *AssignExpr) string
+	visitLogicalExpr(expr *LogicalExpr) string
+	visitCallExpr(expr *CallExpr) string
 }
 
 type EvalVisitor interface {
-	visitBinaryExpr(expr BinaryExpr) (interface{}, error)
-	visitUnaryExpr(expr UnaryExpr) (interface{}, error)
-	visitLiteralExpr(expr LiteralExpr) (interface{}, error)
-	visitGroupingExpr(expr GroupingExpr) (interface{}, error)
-	visitVarExpr(expr VarExpr) (interface{}, error)
-	visitAssignExpr(expr AssignExpr) (interface{}, error)
-	visitLogicalExpr(expr LogicalExpr) (interface{}, error)
-	visitCallExpr(expr CallExpr) (interface{}, error)
+	visitBinaryExpr(expr *BinaryExpr) (interface{}, error)
+	visitUnaryExpr(expr *UnaryExpr) (interface{}, error)
+	visitLiteralExpr(expr *LiteralExpr) (interface{}, error)
+	visitGroupingExpr(expr *GroupingExpr) (interface{}, error)
+	visitVarExpr(expr *VarExpr) (interface{}, error)
+	visitAssignExpr(expr *AssignExpr) (interface{}, error)
+	visitLogicalExpr(expr *LogicalExpr) (interface{}, error)
+	visitCallExpr(expr *CallExpr) (interface{}, error)
 }
 
 type Expr interface {
@@ -40,11 +42,15 @@ func newBinaryExpr(left, right Expr, operator token) *BinaryExpr {
 }
 
 func (expr *BinaryExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitBinaryExpr(*expr)
+	return visitor.visitBinaryExpr(expr)
 }
 
 func (expr *BinaryExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitBinaryExpr(*expr)
+	return visitor.visitBinaryExpr(expr)
+}
+
+func (expr *BinaryExpr) String() string {
+	return fmt.Sprintf("binary expr, left:%s operand:%s right:%s", expr.left, expr.operator, expr.right)
 }
 
 type UnaryExpr struct {
@@ -60,11 +66,15 @@ func newUnaryExpr(right Expr, operator token) *UnaryExpr {
 }
 
 func (expr *UnaryExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitUnaryExpr(*expr)
+	return visitor.visitUnaryExpr(expr)
 }
 
 func (expr *UnaryExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitUnaryExpr(*expr)
+	return visitor.visitUnaryExpr(expr)
+}
+
+func (expr *UnaryExpr) String() string {
+	return fmt.Sprintf("unary expr: operand:%s right:%s", expr.operator, expr.right)
 }
 
 type LiteralExpr struct {
@@ -78,11 +88,15 @@ func newLiteralExpr(value interface{}) *LiteralExpr {
 }
 
 func (expr *LiteralExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitLiteralExpr(*expr)
+	return visitor.visitLiteralExpr(expr)
 }
 
 func (expr *LiteralExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitLiteralExpr(*expr)
+	return visitor.visitLiteralExpr(expr)
+}
+
+func (expr *LiteralExpr) String() string {
+	return fmt.Sprintf("literal expr, value:%v", expr.value)
 }
 
 type GroupingExpr struct {
@@ -96,11 +110,15 @@ func newGroupingExpr(expr Expr) *GroupingExpr {
 }
 
 func (expr *GroupingExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitGroupingExpr(*expr)
+	return visitor.visitGroupingExpr(expr)
 }
 
 func (expr *GroupingExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitGroupingExpr(*expr)
+	return visitor.visitGroupingExpr(expr)
+}
+
+func (expr *GroupingExpr) String() string {
+	return fmt.Sprintf("group expr, expression:%s )", expr.expression)
 }
 
 type VarExpr struct {
@@ -114,11 +132,15 @@ func newVarExpr(name token) *VarExpr {
 }
 
 func (expr *VarExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitVarExpr(*expr)
+	return visitor.visitVarExpr(expr)
 }
 
 func (expr *VarExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitVarExpr(*expr)
+	return visitor.visitVarExpr(expr)
+}
+
+func (expr VarExpr) String() string {
+	return fmt.Sprintf("var expr, var:%s", expr.name)
 }
 
 type AssignExpr struct {
@@ -134,11 +156,15 @@ func newAssignExpr(name token, value Expr) *AssignExpr {
 }
 
 func (expr *AssignExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitAssignExpr(*expr)
+	return visitor.visitAssignExpr(expr)
 }
 
 func (expr *AssignExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitAssignExpr(*expr)
+	return visitor.visitAssignExpr(expr)
+}
+
+func (expr *AssignExpr) String() string {
+	return fmt.Sprintf("assign expr, name:%s = expr:%s", expr.name, expr.expr)
 }
 
 type LogicalExpr struct {
@@ -156,11 +182,15 @@ func newLogicalExpr(operator token, left, right Expr) *LogicalExpr {
 }
 
 func (expr *LogicalExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitLogicalExpr(*expr)
+	return visitor.visitLogicalExpr(expr)
 }
 
 func (expr *LogicalExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitLogicalExpr(*expr)
+	return visitor.visitLogicalExpr(expr)
+}
+
+func (expr *LogicalExpr) String() string {
+	return fmt.Sprintf("logical expr, left:%s operator:%s right:%s", expr.left, expr.operator, expr.right)
 }
 
 type CallExpr struct {
@@ -178,9 +208,13 @@ func newCallExpr(callee Expr, paren token, args []Expr) *CallExpr {
 }
 
 func (expr *CallExpr) acceptStringVisitor(visitor Visitor) string {
-	return visitor.visitCallExpr(*expr)
+	return visitor.visitCallExpr(expr)
 }
 
 func (expr *CallExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
-	return visitor.visitCallExpr(*expr)
+	return visitor.visitCallExpr(expr)
+}
+
+func (expr *CallExpr) String() string {
+	return fmt.Sprintf("call expr, callee: %s args:%s", expr.callee, expr.args)
 }
