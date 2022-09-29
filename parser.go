@@ -91,10 +91,12 @@ func (p *parser) assignment() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		if v, ok := expr.(*VarExpr); ok {
-			name := v.name
-			return newAssignExpr(name, value), nil
-		} else {
+		switch v := expr.(type) {
+		case *VarExpr:
+			return newAssignExpr(v.name, value), nil
+		case *GetExpr:
+			return newSetExpr(v, v.name, value), nil
+		default:
 			return nil, fmt.Errorf("token: %s, invalid assign target", equalToken)
 		}
 	}
@@ -507,13 +509,18 @@ func (p *parser) call() (Expr, error) {
 		return nil, err
 	}
 	for {
-		ok := p.match(LEFT_PAREN)
-		if ok {
-			var err error
+		if p.match(LEFT_PAREN) {
 			expr, err = p.finishCall(expr)
 			if err != nil {
 				return nil, err
 			}
+		} else if p.match(DOT) {
+			name, ok := p.consume(IDENTIFIER)
+			if !ok {
+				p.parseErr(name, "expect property name after '.'")
+				return nil, fmt.Errorf("expect property name after '.'")
+			}
+			expr = newGetExpr(expr, name)
 		} else {
 			break
 		}
@@ -557,6 +564,8 @@ func (p *parser) primary() (Expr, error) {
 		return newLiteralExpr(nil), nil
 	} else if p.match(STRING, NUMBER) {
 		return newLiteralExpr(p.previous().literal), nil
+	} else if p.match(THIS) {
+		return newThisExpr(p.previous()), nil
 	} else if p.match(IDENTIFIER) {
 		return newVarExpr(p.previous()), nil
 	} else if p.match(LEFT_PAREN) {

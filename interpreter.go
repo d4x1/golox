@@ -261,6 +261,38 @@ func (i *interpreter) visitVarExpr(expr *VarExpr) (interface{}, error) {
 	return i.lookupVariable(expr.name, expr)
 }
 
+func (i *interpreter) visitGetExpr(expr *GetExpr) (interface{}, error) {
+	object, err := i.evaluate(expr.object)
+	if err != nil {
+		return nil, err
+	}
+	v, ok := object.(*LoxInstance)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a LoxInstance", object)
+	}
+	return v.Get(expr.name)
+}
+
+func (i *interpreter) visitSetExpr(expr *SetExpr) (interface{}, error) {
+	object, err := i.evaluate(expr.object)
+	if err != nil {
+		return nil, err
+	}
+	v, ok := object.(*LoxInstance)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a LoxInstance, only LoxInstance has fields", object)
+	}
+	value, err := i.evaluate(expr.value)
+	if err != nil {
+		return nil, err
+	}
+	return nil, v.Set(expr.name, value)
+}
+
+func (i *interpreter) visitThisExpr(expr *ThisExpr) (interface{}, error) {
+	return i.lookupVariable(expr.keyword, expr)
+}
+
 func (i *interpreter) lookupVariable(exprName token, expr Expr) (interface{}, error) {
 	distance, ok := i.locals[expr]
 	if ok {
@@ -325,7 +357,16 @@ func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 // 先 Define 后 Assign 的好处是：可以在当前 class 中使用自身。
 func (i *interpreter) visitClassStmt(stmt ClassStmt) error {
 	i.env.Define(stmt.name.Lexeme, nil)
-	loxClass := newLoxClass(stmt.name.Lexeme)
+	methods := make(map[string]*LoxFunction) // 这里是指针会不会有问题？
+	for _, method := range stmt.methods {
+		var isInitializar bool
+		if method.name.Lexeme == "init" {
+			isInitializar = true
+		}
+		function := newLoxFunction(method, i.env, isInitializar)
+		methods[method.name.Lexeme] = function
+	}
+	loxClass := newLoxClassWithMethods(stmt.name.Lexeme, methods)
 	return i.env.Assign(stmt.name, loxClass)
 }
 
@@ -431,7 +472,7 @@ func (i *interpreter) visitCallExpr(expr *CallExpr) (interface{}, error) {
 }
 
 func (i *interpreter) visitFunctionStmt(stmt FunctionStmt) error {
-	function := newLoxFunction(stmt, i.env)
+	function := newLoxFunction(stmt, i.env, false)
 	i.env.Define(stmt.name.Lexeme, function)
 	return nil
 }

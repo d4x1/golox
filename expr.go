@@ -11,6 +11,9 @@ type Visitor interface {
 	visitAssignExpr(expr *AssignExpr) string
 	visitLogicalExpr(expr *LogicalExpr) string
 	visitCallExpr(expr *CallExpr) string
+	visitGetExpr(expr *GetExpr) string
+	visitSetExpr(expr *SetExpr) string
+	visitThisExpr(expr *ThisExpr) string
 }
 
 type EvalVisitor interface {
@@ -22,6 +25,9 @@ type EvalVisitor interface {
 	visitAssignExpr(expr *AssignExpr) (interface{}, error)
 	visitLogicalExpr(expr *LogicalExpr) (interface{}, error)
 	visitCallExpr(expr *CallExpr) (interface{}, error)
+	visitGetExpr(expr *GetExpr) (interface{}, error)
+	visitSetExpr(expr *SetExpr) (interface{}, error)
+	visitThisExpr(expr *ThisExpr) (interface{}, error)
 }
 
 type Expr interface {
@@ -217,4 +223,76 @@ func (expr *CallExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error
 
 func (expr *CallExpr) String() string {
 	return fmt.Sprintf("call expr, callee: %s args:%s", expr.callee, expr.args)
+}
+
+type GetExpr struct {
+	object Expr
+	name   token
+}
+
+func newGetExpr(object Expr, name token) *GetExpr {
+	return &GetExpr{
+		object: object,
+		name:   name,
+	}
+}
+
+func (expr *GetExpr) acceptStringVisitor(visitor Visitor) string {
+	return visitor.visitGetExpr(expr)
+}
+
+func (expr *GetExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
+	return visitor.visitGetExpr(expr)
+}
+
+func (expr *GetExpr) String() string {
+	return fmt.Sprintf("get expr, object: %s name:%s", expr.object, expr.name)
+}
+
+type SetExpr struct {
+	object Expr
+	name   token
+	value  Expr
+}
+
+func newSetExpr(object Expr, name token, value Expr) *SetExpr {
+	return &SetExpr{
+		object: object,
+		name:   name,
+		value:  value,
+	}
+}
+
+func (expr *SetExpr) acceptStringVisitor(visitor Visitor) string {
+	return visitor.visitSetExpr(expr)
+}
+
+func (expr *SetExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
+	return visitor.visitSetExpr(expr)
+}
+
+func (expr *SetExpr) String() string {
+	return fmt.Sprintf("set expr, object: %s name:%s value:%s", expr.object, expr.name, expr.value)
+}
+
+type ThisExpr struct {
+	keyword token
+}
+
+func newThisExpr(keyword token) *ThisExpr {
+	return &ThisExpr{
+		keyword: keyword,
+	}
+}
+
+func (expr *ThisExpr) acceptStringVisitor(visitor Visitor) string {
+	return visitor.visitThisExpr(expr)
+}
+
+func (expr *ThisExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
+	return visitor.visitThisExpr(expr)
+}
+
+func (expr *ThisExpr) String() string {
+	return fmt.Sprintf("this expr, keyword: %s", expr.keyword)
 }

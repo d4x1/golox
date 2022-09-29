@@ -54,3 +54,15 @@ func (p *PrettyPrinter) visitLogicalExpr(expr *LogicalExpr) string {
 func (p *PrettyPrinter) visitCallExpr(expr *CallExpr) string {
 	return fmt.Sprint("%v %v %v", expr.callee, expr.paren, expr.args)
 }
+
+func (p *PrettyPrinter) visitGetExpr(expr *GetExpr) string {
+	return fmt.Sprint("%v %v", expr.object, expr.name)
+}
+
+func (p *PrettyPrinter) visitSetExpr(expr *SetExpr) string {
+	return fmt.Sprint("%v %v %v", expr.object, expr.name, expr.value)
+}
+
+func (p *PrettyPrinter) visitThisExpr(expr *ThisExpr) string {
+	return fmt.Sprint("%v", expr.keyword)
+}

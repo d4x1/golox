@@ -7,6 +7,15 @@ type FunctionType int
 const (
 	FunctionTypeNone = iota
 	FuntionTypeFunction
+	FunctionTypeInitializer
+	FuntionTypeMethod
+)
+
+type ClassType int
+
+const (
+	ClassTypeNone = iota
+	ClassTypeClass
 )
 
 // 主要是为了做 semantic analysis
@@ -14,6 +23,7 @@ type resolver struct {
 	interpreter         Interpreter
 	scopes              *stack
 	currentFunctionType FunctionType
+	currentClassType    ClassType
 }
 
 func newResolver(intp Interpreter) *resolver {
@@ -21,6 +31,7 @@ func newResolver(intp Interpreter) *resolver {
 		interpreter:         intp,
 		scopes:              newStack(),
 		currentFunctionType: FunctionTypeNone,
+		currentClassType:    ClassTypeNone,
 	}
 }
 
@@ -94,6 +105,22 @@ func (r *resolver) define(name token) error {
 	return nil
 }
 
+func (r *resolver) put(name string, value bool) error {
+	if r.scopes.IsEmpty() {
+		return nil
+	}
+	v, err := r.scopes.Peek()
+	if err != nil {
+		return err
+	}
+	scope, ok := v.(map[string]bool)
+	if !ok {
+		return errCastToMapString2Bool
+	}
+	scope[name] = value
+	return nil
+}
+
 func (r *resolver) visitBinaryExpr(expr *BinaryExpr) (interface{}, error) {
 	if err := r.resolveExpr(expr.left); err != nil {
 		return nil, err
@@ -157,6 +184,13 @@ func (r *resolver) visitLogicalExpr(expr *LogicalExpr) (interface{}, error) {
 	return nil, nil
 }
 
+func (r *resolver) visitThisExpr(expr *ThisExpr) (interface{}, error) {
+	if r.currentClassType == ClassTypeNone {
+		return nil, fmt.Errorf("cannot use 'this' outside of a class")
+	}
+	return nil, r.resolveLocal(expr, expr.keyword)
+}
+
 func (r *resolver) visitCallExpr(expr *CallExpr) (interface{}, error) {
 	if err := r.resolveExpr(expr.callee); err != nil {
 		return nil, err
@@ -167,6 +201,17 @@ func (r *resolver) visitCallExpr(expr *CallExpr) (interface{}, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (r *resolver) visitGetExpr(expr *GetExpr) (interface{}, error) {
+	return nil, r.resolveExpr(expr.object)
+}
+
+func (r *resolver) visitSetExpr(expr *SetExpr) (interface{}, error) {
+	if err := r.resolveExpr(expr.value); err != nil {
+		return nil, err
+	}
+	return nil, r.resolveExpr(expr.object)
 }
 
 func (r *resolver) visitPrintStmt(stmt PrintStmt) error {
@@ -231,10 +276,32 @@ func (r *resolver) visitWhileStmt(stmt WhileStmt) error {
 }
 
 func (r *resolver) visitClassStmt(stmt ClassStmt) error {
+	enclosingClass := r.currentClassType
+	r.currentClassType = ClassTypeClass
+	defer func() {
+		r.currentClassType = enclosingClass
+	}()
 	if err := r.declare(stmt.name); err != nil {
 		return err
 	}
 	if err := r.define(stmt.name); err != nil {
+		return err
+	}
+	if err := r.beginScope(); err != nil {
+		return err
+	}
+	r.put("this", true)
+	for _, function := range stmt.methods {
+		functionType := FuntionTypeMethod
+		if function.name.Lexeme == "init" {
+			functionType = FunctionTypeInitializer
+		}
+		err := r.resolveFunction(function, FunctionType(functionType))
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.endScope(); err != nil {
 		return err
 	}
 	return nil
@@ -258,6 +325,9 @@ func (r *resolver) visitReturnStmt(stmt ReturnStmt) error {
 		return fmt.Errorf("cannot return from top-level code")
 	}
 	if stmt.value != nil {
+		if r.currentClassType == FunctionTypeInitializer {
+			return fmt.Errorf("keyword: %s cannot return from a initializar", stmt.keyword)
+		}
 		return r.resolveExpr(stmt.value)
 	}
 	return nil
