@@ -14,6 +14,7 @@ type Visitor interface {
 	visitGetExpr(expr *GetExpr) string
 	visitSetExpr(expr *SetExpr) string
 	visitThisExpr(expr *ThisExpr) string
+	visitSuperExpr(expr *SuperExpr) string
 }
 
 type EvalVisitor interface {
@@ -28,6 +29,7 @@ type EvalVisitor interface {
 	visitGetExpr(expr *GetExpr) (interface{}, error)
 	visitSetExpr(expr *SetExpr) (interface{}, error)
 	visitThisExpr(expr *ThisExpr) (interface{}, error)
+	visitSuperExpr(expr *SuperExpr) (interface{}, error)
 }
 
 type Expr interface {
@@ -295,4 +297,28 @@ func (expr *ThisExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error
 
 func (expr *ThisExpr) String() string {
 	return fmt.Sprintf("this expr, keyword: %s", expr.keyword)
+}
+
+type SuperExpr struct {
+	keyword token
+	method  token
+}
+
+func newSuperExpr(keyword token, method token) *SuperExpr {
+	return &SuperExpr{
+		keyword: keyword,
+		method:  method,
+	}
+}
+
+func (expr *SuperExpr) acceptStringVisitor(visitor Visitor) string {
+	return visitor.visitSuperExpr(expr)
+}
+
+func (expr *SuperExpr) acceptEvalVisitor(visitor EvalVisitor) (interface{}, error) {
+	return visitor.visitSuperExpr(expr)
+}
+
+func (expr *SuperExpr) String() string {
+	return fmt.Sprintf("super expr, keyword: %s, method: %s", expr.keyword, expr.method)
 }

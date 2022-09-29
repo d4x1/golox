@@ -3,8 +3,9 @@ package main
 import "fmt"
 
 type LoxClass struct {
-	name    string
-	methods map[string]*LoxFunction
+	superclass *LoxClass
+	name       string
+	methods    map[string]*LoxFunction
 }
 
 func newLoxClass(name string) *LoxClass {
@@ -17,6 +18,14 @@ func newLoxClassWithMethods(name string, methods map[string]*LoxFunction) *LoxCl
 	return &LoxClass{
 		name:    name,
 		methods: methods,
+	}
+}
+
+func newLoxClassWithSuperClass(name string, superclass *LoxClass, methods map[string]*LoxFunction) *LoxClass {
+	return &LoxClass{
+		name:       name,
+		methods:    methods,
+		superclass: superclass,
 	}
 }
 
@@ -55,6 +64,9 @@ func (c *LoxClass) FindMethod(name string) (*LoxFunction, error) {
 	v, ok := c.methods[name]
 	if ok {
 		return v, nil
+	}
+	if c.superclass != nil {
+		return c.superclass.FindMethod(name)
 	}
 	return nil, nil
 }

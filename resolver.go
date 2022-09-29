@@ -16,6 +16,7 @@ type ClassType int
 const (
 	ClassTypeNone = iota
 	ClassTypeClass
+	ClassTypeSubClass
 )
 
 // 主要是为了做 semantic analysis
@@ -214,6 +215,15 @@ func (r *resolver) visitSetExpr(expr *SetExpr) (interface{}, error) {
 	return nil, r.resolveExpr(expr.object)
 }
 
+func (r *resolver) visitSuperExpr(expr *SuperExpr) (interface{}, error) {
+	if r.currentClassType == ClassTypeNone {
+		return nil, fmt.Errorf("cannot use 'super' outside a class")
+	} else if r.currentClassType != ClassTypeSubClass {
+		return nil, fmt.Errorf("cannot use 'super' in a class with no super class")
+	}
+	return nil, r.resolveLocal(expr, expr.keyword)
+}
+
 func (r *resolver) visitPrintStmt(stmt PrintStmt) error {
 	return r.resolveExpr(stmt.expr)
 }
@@ -287,6 +297,25 @@ func (r *resolver) visitClassStmt(stmt ClassStmt) error {
 	if err := r.define(stmt.name); err != nil {
 		return err
 	}
+	if stmt.superclass != nil {
+		r.currentClassType = ClassTypeSubClass
+		if stmt.superclass.name.Lexeme == stmt.name.Lexeme {
+			return fmt.Errorf("a class cannot inherit from itself")
+		}
+		err := r.resolveExpr(stmt.superclass)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 处理 super 调用需要的 context
+	if stmt.superclass != nil {
+		if err := r.beginScope(); err != nil {
+			return err
+		}
+		r.put("super", true)
+	}
+
 	if err := r.beginScope(); err != nil {
 		return err
 	}
@@ -303,6 +332,12 @@ func (r *resolver) visitClassStmt(stmt ClassStmt) error {
 	}
 	if err := r.endScope(); err != nil {
 		return err
+	}
+	// 闭合 super 调用的 context
+	if stmt.superclass != nil {
+		if err := r.endScope(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -123,6 +123,15 @@ func (p *parser) classDeclaration() (Stmt, error) {
 		p.parseErr(name, fmt.Sprintf("expect class name"))
 		return nil, fmt.Errorf("expect class name")
 	}
+	var superclass *VarExpr
+	if p.match(LESS) {
+		superclassName, ok := p.consume(IDENTIFIER)
+		if !ok {
+			p.parseErr(superclassName, fmt.Sprintf("expect superclass name"))
+			return nil, fmt.Errorf("expect superclass name")
+		}
+		superclass = newVarExpr(superclassName)
+	}
 	token, ok := p.consume(LEFT_BRACE)
 	if !ok {
 		p.parseErr(token, fmt.Sprintf("expect '{' before class body"))
@@ -146,7 +155,7 @@ func (p *parser) classDeclaration() (Stmt, error) {
 		return nil, fmt.Errorf("expect '}' after class body")
 	}
 
-	return newClassStmt(name, methods), nil
+	return newClassStmt(name, superclass, methods), nil
 }
 
 func (p *parser) function(kind string) (Stmt, error) {
@@ -564,6 +573,19 @@ func (p *parser) primary() (Expr, error) {
 		return newLiteralExpr(nil), nil
 	} else if p.match(STRING, NUMBER) {
 		return newLiteralExpr(p.previous().literal), nil
+	} else if p.match(SUPER) {
+		keyword := p.previous()
+		dotToken, ok := p.consume(DOT)
+		if !ok {
+			p.parseErr(dotToken, "expect '.' after 'super'")
+			return nil, fmt.Errorf("expect '.' after 'super'")
+		}
+		methodName, ok := p.consume(IDENTIFIER)
+		if !ok {
+			p.parseErr(methodName, "expect super class's method name")
+			return nil, fmt.Errorf("expect super class's method name")
+		}
+		return newSuperExpr(keyword, methodName), nil
 	} else if p.match(THIS) {
 		return newThisExpr(p.previous()), nil
 	} else if p.match(IDENTIFIER) {

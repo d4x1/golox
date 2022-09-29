@@ -2,7 +2,7 @@
 // 至于 | 的先后顺序，或者一个特性被定性为什么类型的，主要是有设计上的考量，出发点是处理方便。
 program     ->  declaration * EOF ;
 declaration -> classDeclaration | varDeclaration | statement | funcDeclaration;
-classDeclaration    -> "class" IDENTIFIER "{" function* "}" ;
+classDeclaration    -> "class" IDENTIFIER ("<" IDENTIFIER)? "{" function* "}" ;
 funcDeclaration -> "fun" function ;
 function    ->  IDENTIFIER "(" parameters? ")" block ;
 parameters  -> IDENTIFIER ("," IDENTIFIER )* ;
@@ -25,7 +25,7 @@ call        -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments   -> expression ( "," expression )* ;
 binary      ->  expression operator expression ;
 operator    ->  "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | ">" | ">=" ;
-primary     -> "true" | "false" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "nil";
+primary     -> "true" | "false" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "nil" | "super" "." IDENTIFIER;
 
 NUMBER      ->  DIGIT+ ( "." DIGIT+ )? ;
 STRING      ->  "\"" <any char except "\"">* "\"" ;

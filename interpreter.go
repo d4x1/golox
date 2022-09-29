@@ -293,6 +293,47 @@ func (i *interpreter) visitThisExpr(expr *ThisExpr) (interface{}, error) {
 	return i.lookupVariable(expr.keyword, expr)
 }
 
+func (i *interpreter) visitSuperExpr(expr *SuperExpr) (interface{}, error) {
+	distance, ok := i.locals[expr]
+	if !ok {
+		return nil, fmt.Errorf("expr: %s not found in locas", expr)
+	}
+	var err error
+	var superclass *LoxClass
+	superclassInterface, err := i.env.GetAtByVarName(distance, "super")
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := superclassInterface.(*LoxClass); !ok {
+		return nil, fmt.Errorf("cast %s to LoxClass failed", superclassInterface)
+	} else {
+		superclass = v
+	}
+
+	var object *LoxInstance
+	objectInterface, err := i.env.GetAtByVarName(distance-1, "this")
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := objectInterface.(*LoxInstance); !ok {
+		return nil, fmt.Errorf("cast %s to LoxClass failed", superclassInterface)
+	} else {
+		object = v
+	}
+
+	method, err := superclass.FindMethod(expr.method.Lexeme)
+	if err != nil {
+		return nil, err
+	}
+
+	if method == nil {
+		return nil, fmt.Errorf("%s undefined property %s", expr.method, expr.method.Lexeme)
+	}
+
+	return method.Bind(object)
+}
+
 func (i *interpreter) lookupVariable(exprName token, expr Expr) (interface{}, error) {
 	distance, ok := i.locals[expr]
 	if ok {
@@ -356,7 +397,26 @@ func (i *interpreter) executeBlock(stmts []Stmt, env *Env) error {
 
 // 先 Define 后 Assign 的好处是：可以在当前 class 中使用自身。
 func (i *interpreter) visitClassStmt(stmt ClassStmt) error {
+	var superclass *LoxClass
+	if stmt.superclass != nil {
+		superclassInterface, err := i.evaluate(stmt.superclass)
+		if err != nil {
+			return err
+		}
+		v, ok := superclassInterface.(*LoxClass)
+		if !ok {
+			return fmt.Errorf("superclass must be a class")
+		}
+		superclass = v
+	}
 	i.env.Define(stmt.name.Lexeme, nil)
+
+	//  处理 super 调用
+	if stmt.superclass != nil {
+		i.env = newEnvWithEnclosing(i.env)
+		i.env.Define("super", superclass)
+	}
+
 	methods := make(map[string]*LoxFunction) // 这里是指针会不会有问题？
 	for _, method := range stmt.methods {
 		var isInitializar bool
@@ -366,7 +426,13 @@ func (i *interpreter) visitClassStmt(stmt ClassStmt) error {
 		function := newLoxFunction(method, i.env, isInitializar)
 		methods[method.name.Lexeme] = function
 	}
-	loxClass := newLoxClassWithMethods(stmt.name.Lexeme, methods)
+	loxClass := newLoxClassWithSuperClass(stmt.name.Lexeme, superclass, methods)
+
+	// 处理 super 调用，把 env 还原。
+	if superclass != nil {
+		i.env = i.env.enclosing
+	}
+
 	return i.env.Assign(stmt.name, loxClass)
 }
 

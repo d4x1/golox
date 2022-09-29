@@ -66,3 +66,7 @@ func (p *PrettyPrinter) visitSetExpr(expr *SetExpr) string {
 func (p *PrettyPrinter) visitThisExpr(expr *ThisExpr) string {
 	return fmt.Sprint("%v", expr.keyword)
 }
+
+func (p *PrettyPrinter) visitSuperExpr(expr *SuperExpr) string {
+	return fmt.Sprint("%v %v", expr.keyword, expr.method)
+}

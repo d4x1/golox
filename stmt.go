@@ -178,14 +178,16 @@ func (stmt ReturnStmt) String() string {
 }
 
 type ClassStmt struct {
-	name    token
-	methods []FunctionStmt
+	name       token
+	methods    []FunctionStmt
+	superclass *VarExpr
 }
 
-func newClassStmt(name token, methods []FunctionStmt) Stmt {
+func newClassStmt(name token, superclass *VarExpr, methods []FunctionStmt) Stmt {
 	return ClassStmt{
-		name:    name,
-		methods: methods,
+		name:       name,
+		methods:    methods,
+		superclass: superclass,
 	}
 }
 
@@ -194,5 +196,5 @@ func (stmt ClassStmt) acceptStmtVisitor(visitor StmtVisitor) error {
 }
 
 func (stmt ClassStmt) String() string {
-	return fmt.Sprintf("class stmt, name: %s, functions: %s", stmt.name, stmt.methods)
+	return fmt.Sprintf("class stmt, name: %s, superclass:%s functions: %s", stmt.name, stmt.superclass, stmt.methods)
 }
